@@ -11,3 +11,16 @@ C:\Users\jovna\Desktop\Aplicação RFID\RFID\RFID\obj\Debug\RFID.pdb
 C:\Users\jovna\Desktop\Aplicação RFID\RFID\RFID\bin\Debug\Intermec.DataCollection.RFID.AdvancedBRI.dll
 C:\Users\jovna\Desktop\Aplicação RFID\RFID\RFID\bin\Debug\Intermec.DataCollection.RFID.BasicBRI.dll
 C:\Users\jovna\Desktop\Aplicação RFID\RFID\RFID\obj\Debug\RFID.csproj.CopyComplete
+C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\RFID.exe.config
+C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\RFID.exe
+C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\RFID.pdb
+C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\Intermec.DataCollection.RFID.AdvancedBRI.dll
+C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\Intermec.DataCollection.RFID.BasicBRI.dll
+C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.csproj.AssemblyReference.cache
+C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.Form1.resources
+C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.Properties.Resources.resources
+C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.csproj.GenerateResource.cache
+C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.csproj.CoreCompileInputs.cache
+C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.csproj.CopyComplete
+C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.exe
+C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.pdb
