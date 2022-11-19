@@ -8,6 +8,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Intermec.DataCollection.RFID;
+using Npgsql;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace RFID
 {
@@ -17,11 +20,46 @@ namespace RFID
         private bool bReaderOffline = true;
         private int tagCount = 0;
         private string[] MyTagList = new string[100];
+        private string tag;
+
+        private DataTable dt;
+
+        //RabbitMQ
+        private static void RMQ_Send(string sql, string queue)
+        {
+            var factory = new ConnectionFactory()
+            {
+                HostName = "localhost"
+            };
+            using (var connection = factory.CreateConnection())
+            using (var channel = connection.CreateModel())
+            {
+                channel.QueueDeclare(queue: queue,
+                                     durable: false,
+                                     exclusive: false,
+                                     autoDelete: false,
+                                     arguments: null);
+
+                string message = sql;
+                var body = Encoding.UTF8.GetBytes(message);
+
+                channel.BasicPublish(exchange: "",
+                                     routingKey: queue,
+                                     basicProperties: null,
+                                     body: body);
+            }
+        }
+
         public Form1()
         {
             InitializeComponent();
         }
-
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            //comunicar com o ms de log para pegar o log
+            string sql = "select * from select_tag_log()";
+            RMQ_Send(sql, "logs");
+        }
         private bool OpenReaderConnection()
         {
             //inicializa variáveis necessárias
@@ -166,6 +204,38 @@ namespace RFID
                     }
                     //imprime as tags na caixa de mensagem
                     PostMessageToListBox1(MyTagList[tagCount]);
+
+                    if (radioButton1.Checked)
+                    {
+                        //faz a inserção no banco
+                        //para isso, é preciso corresponder o id com o produto
+                        tag = MyTagList[tagCount].Substring(MyTagList[tagCount].Length - 3);
+                        int sc = int.Parse(tag);
+
+                        switch (sc)
+                        {
+                            case 081:
+                                Random rnd = new Random();
+                                int id = rnd.Next(1, 100);
+                                string str = "insert into Tags(rfid, name) values('" + MyTagList[tagCount] + "','luva')";
+                                RMQ_Send(str, "tags");
+                                break;
+
+                            case 082:
+                                rnd = new Random();
+                                id = rnd.Next(1, 100);
+                                str = "insert into Tags(rfid, name) values('" + MyTagList[tagCount] + "','parafuso')";
+                                RMQ_Send(str, "tags");
+                                break;
+
+                            case 084:
+                                rnd = new Random();
+                                id = rnd.Next(1, 100);
+                                str = "insert into Tags(rfid, name) values('" + MyTagList[tagCount] + "','chicote')";
+                                RMQ_Send(str, "tags");
+                                break;
+                        }
+                    }
                 }
             }
             //caso não tenha/seja possível identificar nenhuma tag, imprime "NO TAGS"
@@ -257,9 +327,9 @@ namespace RFID
 
                 //enable READ button
                 button2.Enabled = true;
+                button3.Enabled = true;
             }
         }
-
         private void Button2_Click(object sender, EventArgs e)
         {
             //botão para ler o RFID
@@ -269,8 +339,38 @@ namespace RFID
                 return;
             }
 
-            //ReadTags();
             ReadTagsReportNo();
         }
+        private void button3_Click(object sender, EventArgs e)
+        {
+            //botão para ler o RFID
+            if (bReaderOffline == true)
+            {
+                PostMessageToListBox1("Receptor está offline");
+                return;
+            }
+
+            ReadTags();
+        }
+
+        //SQL
+        /*private void Select()
+        {
+            try
+            {
+                conn.Open();
+                sql = @"select * from select_tag()";
+                cmd = new NpgsqlCommand(sql, conn);
+                dt = new DataTable();
+                dt.Load(cmd.ExecuteReader());
+                conn.Close();
+                dataGridView1.DataSource = null;
+                dataGridView1.DataSource = dt;
+            }catch(Exception e)
+            {
+                conn.Close();
+                MessageBox.Show("Erro: " + e);
+            }
+        }*/
     }
 }
