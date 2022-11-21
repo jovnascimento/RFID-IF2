@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Intermec.DataCollection.RFID;
+using Newtonsoft.Json;
 using Npgsql;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -22,7 +23,14 @@ namespace RFID
         private string[] MyTagList = new string[100];
         private string tag;
 
-        private DataTable dt;
+        public Form1()
+        {
+            InitializeComponent();
+        }
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            //comunicar com o ms de log para pegar o log
+        }
 
         //RabbitMQ
         private static void RMQ_Send(string sql, string queue)
@@ -50,16 +58,46 @@ namespace RFID
             }
         }
 
-        public Form1()
+        private static void Logs()
         {
-            InitializeComponent();
+            var factory = new ConnectionFactory()
+            {
+                HostName = "localhost"
+            };
+
+            using (var connection = factory.CreateConnection())
+            using (var channel = connection.CreateModel())
+            {
+                var replyQueue = channel.QueueDeclare(queue: "", exclusive: true);
+                channel.QueueDeclare(queue: "logs",
+                                     durable: false,
+                                     exclusive: false,
+                                     autoDelete: false,
+                                     arguments: null);
+
+                var consumer = new EventingBasicConsumer(channel);
+
+                consumer.Received += (model, ea) =>
+                {
+                    var body = ea.Body.ToArray();
+                    var message = Encoding.UTF8.GetString(body);
+                };
+
+                channel.BasicConsume(queue: replyQueue,
+                                     autoAck: true,
+                                     consumer: consumer);
+
+                var message_req = "select * from select_tag_log()";
+                var body_req = Encoding.UTF8.GetBytes(message_req);
+
+                var properties = channel.CreateBasicProperties();
+                properties.ReplyTo = replyQueue.QueueName;
+                properties.CorrelationId = Guid.NewGuid().ToString();
+
+                channel.BasicPublish("", "logs", properties, body_req);
+            }
         }
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            //comunicar com o ms de log para pegar o log
-            string sql = "select * from select_tag_log()";
-            RMQ_Send(sql, "logs");
-        }
+
         private bool OpenReaderConnection()
         {
             //inicializa variáveis necessárias
@@ -215,26 +253,29 @@ namespace RFID
                         switch (sc)
                         {
                             case 081:
-                                Random rnd = new Random();
-                                int id = rnd.Next(1, 100);
-                                string str = "insert into Tags(rfid, name) values('" + MyTagList[tagCount] + "','luva')";
-                                RMQ_Send(str, "tags");
+                                string tag = "select * from insert_tag('" + MyTagList[tagCount] + "','luva')";
+                                RMQ_Send(tag, "tags");
+                                string log = "select * from insert_tag('" + MyTagList[tagCount] + "','luva'," + DateTime.Now + ")";
+                                RMQ_Send(log, "logs");
+                                //mudar o logs para logs_insert
+                                //logs é para receber e enviar o log
                                 break;
 
                             case 082:
-                                rnd = new Random();
-                                id = rnd.Next(1, 100);
-                                str = "insert into Tags(rfid, name) values('" + MyTagList[tagCount] + "','parafuso')";
-                                RMQ_Send(str, "tags");
+                                tag = "select * from insert_tag('" + MyTagList[tagCount] + "','parafuso')";
+                                RMQ_Send(tag, "tags");
                                 break;
 
                             case 084:
-                                rnd = new Random();
-                                id = rnd.Next(1, 100);
-                                str = "insert into Tags(rfid, name) values('" + MyTagList[tagCount] + "','chicote')";
-                                RMQ_Send(str, "tags");
+                                tag = "select * from insert_tag('" + MyTagList[tagCount] + "','chicote')";
+                                RMQ_Send(tag, "tags");
                                 break;
                         }
+                    }
+                    else
+                    {
+                        string tag = "select * from delete_tag('" + MyTagList[tagCount] + "')";
+                        RMQ_Send(tag, "tags");
                     }
                 }
             }
@@ -353,13 +394,13 @@ namespace RFID
             ReadTags();
         }
 
-        //SQL
-        /*private void Select()
+        /*SQL
+        private void Select()
         {
             try
             {
                 conn.Open();
-                sql = @"select * from select_tag()";
+                sql = @"select * from select_tag_log()";
                 cmd = new NpgsqlCommand(sql, conn);
                 dt = new DataTable();
                 dt.Load(cmd.ExecuteReader());

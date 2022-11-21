@@ -54,3 +54,5 @@ C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\System.Threading.Tasks.Extensions
 C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\System.ValueTuple.xml
 C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\RabbitMQ.Client.dll
 C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\RabbitMQ.Client.xml
+C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\Newtonsoft.Json.dll
+C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\Newtonsoft.Json.xml
