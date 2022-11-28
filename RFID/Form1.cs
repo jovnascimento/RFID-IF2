@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using Npgsql;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace RFID
 {
@@ -21,7 +22,6 @@ namespace RFID
         private bool bReaderOffline = true;
         private int tagCount = 0;
         private string[] MyTagList = new string[100];
-        private string tag;
 
         public Form1()
         {
@@ -33,7 +33,7 @@ namespace RFID
         }
 
         //RabbitMQ
-        private static void RMQ_Send(string sql, string queue)
+        /*private static void RMQ_Send(string sql, string queue)
         {
             var factory = new ConnectionFactory()
             {
@@ -48,57 +48,60 @@ namespace RFID
                                      autoDelete: false,
                                      arguments: null);
 
-                string message = sql;
-                var body = Encoding.UTF8.GetBytes(message);
+                string messageSend = sql;
+                var bodySend = Encoding.UTF8.GetBytes(messageSend);
 
                 channel.BasicPublish(exchange: "",
                                      routingKey: queue,
                                      basicProperties: null,
-                                     body: body);
+                                     body: bodySend);
             }
-        }
+        }*/
 
-        private static void Logs()
+        private static void RMQ_RR()
         {
             var factory = new ConnectionFactory()
             {
                 HostName = "localhost"
             };
+            var connection = factory.CreateConnection();
+            var channel = connection.CreateModel();
 
-            using (var connection = factory.CreateConnection())
-            using (var channel = connection.CreateModel())
+            var replyQueue = channel.QueueDeclare(
+                queue: "",
+                exclusive: true);
+
+            channel.QueueDeclare(
+                "logs",
+                durable: false,
+                exclusive: false,
+                autoDelete: false,
+                arguments: null);
+
+            var consumer = new EventingBasicConsumer(channel);
+
+            consumer.Received += (model, ea) =>
             {
-                var replyQueue = channel.QueueDeclare(queue: "", exclusive: true);
-                channel.QueueDeclare(queue: "logs",
-                                     durable: false,
-                                     exclusive: false,
-                                     autoDelete: false,
-                                     arguments: null);
+                var bodyReceive = ea.Body.ToArray();
+                var messageReceive = Encoding.UTF8.GetString(bodyReceive);
+            };
 
-                var consumer = new EventingBasicConsumer(channel);
+            channel.BasicConsume(
+                queue: replyQueue.QueueName,
+                autoAck: true,
+                consumer: consumer);
 
-                consumer.Received += (model, ea) =>
-                {
-                    var body = ea.Body.ToArray();
-                    var message = Encoding.UTF8.GetString(body);
-                };
+            var message = "select * from Log()";
+            var body = Encoding.UTF8.GetBytes(message);
 
-                channel.BasicConsume(queue: replyQueue,
-                                     autoAck: true,
-                                     consumer: consumer);
+            var properties = channel.CreateBasicProperties();
+            properties.ReplyTo = replyQueue.QueueName;
+            properties.CorrelationId = Guid.NewGuid().ToString();
 
-                var message_req = "select * from select_tag_log()";
-                var body_req = Encoding.UTF8.GetBytes(message_req);
-
-                var properties = channel.CreateBasicProperties();
-                properties.ReplyTo = replyQueue.QueueName;
-                properties.CorrelationId = Guid.NewGuid().ToString();
-
-                channel.BasicPublish("", "logs", properties, body_req);
-            }
+            channel.BasicPublish("", "logs", properties, body);
         }
 
-        private bool OpenReaderConnection()
+        private bool AbrirConexao()
         {
             //inicializa variáveis necessárias
             bool status = false;
@@ -138,8 +141,6 @@ namespace RFID
                 return false;
             }
 
-            //this.brdr.SetAutoPollTriggerEvents(false);
-
             //ao inicializar a conexão, primeiro executa um ping no receptor
             msg = this.brdr.Execute("PING");
             if (msg != null)
@@ -147,11 +148,7 @@ namespace RFID
                 //se a mensagem recebida for a padrão
                 if (msg.Equals("OK>"))
                 {
-                    //executa a verificação de versão e imprime a mensagem na caixa de mensagem
-                    msg = this.brdr.Execute("VER");
-                    ParseResponse(msg);
-
-                    //então, define que o receptor está online
+                    //define que o receptor está online
                     bReaderOffline = false;
                     status = true;
                 }
@@ -168,115 +165,89 @@ namespace RFID
             return status;
         }
 
-        //método tratar a mensagem enviada pelo IF2 e imprimí-la na caixa de mensagem
-        private void ParseResponse(string msg)
+        private static string VerificaTag(string rfid, string ant)
         {
-            int x = 0;
-            string delimStr = null;
-            string[] tList = null;
-            char[] delimiter = null;
-            int count = 0;
+            string str;
+            
+            string id = rfid.Substring(rfid.Length - 3);
+            int sc = int.Parse(id);
 
-            delimStr = "\n";
-            delimiter = delimStr.ToCharArray();
-            tList = msg.Replace("\r\n", "\n").Split(delimiter);
-            count = tList.Length;
-            for(x = 0; x < count; x++)
+            switch (sc)
             {
-                PostMessageToListBox1(tList[x]);
+                case 081:
+                    string lant = VerificaAnt(ant);
+                    return $"select * from insert_tag('{rfid}', '708', 'Chicote TE D Celta', '{lant}')";
+
+                case 082:
+                    lant = VerificaAnt(ant);
+                    return $"select * from insert_tag('{rfid}', '957', 'Parafuso Fixação Motor', '{lant}')";
+
+                case 084:
+                    lant = VerificaAnt(ant);
+                    return $"select * from insert_tag('{rfid}', '339', 'Vidro Janela Celta', '{lant}')";
+
+                default:
+                    return "NOTAG";
             }
         }
 
-        //terminar a conexão com o IF2
-        private void CloseReaderConnection()
+        private static string VerificaAnt(string ant)
         {
-            if (brdr != null)
+            int nant = int.Parse(ant);
+
+            switch (nant)
             {
-                brdr.Dispose();
-                brdr = null;
+                case 1:
+                    return "Pavilhão 1";
+
+                case 2:
+                    return "Pavilhão 2";
+
+                case 3:
+                    return "Pavilhão 3"; ;
+
+                case 4:
+                    return "Pavilhão 4";
+
+                default:
+                    return "Não identificado";
             }
-        }
-
-        //método para uma leitura simples das tags
-        //ao abertar o botão de "Leitura simples", será feita a leitura de todas as tags próximas
-        //instantaneamente, sem uma poll ou leitura contínua
-        private void ReadTags()
-        {
-            bool status = false;
-
-            //verificação se o receptor está online
-            if (bReaderOffline == true)
-            {
-                PostMessageToListBox1("Receptor está offline");
-                return;
-            }
-
-            tagCount = 0;
-
-            //chama a função de leitura na antena
-            status = brdr.Read();
-
-            //chama o método para pegar os IDs das tags
-            LoadTagList();
         }
 
         //método que busca os IDs definidos nas tags e imprime na caixa de mensagem
-        private void LoadTagList()
+        private void ListaTags()
         {
+            string ID = null;
+            string ANT = null;
             if (brdr.TagCount > 0)
             {
                 //para cada tag identificada
                 foreach (Tag tt in brdr.Tags)
                 {
                     //lista recebe as tags transformadas em string
-                    MyTagList[++tagCount] = tt.ToString();
+                    ID = tt.ToString();
 
                     //se as tags possuirem alguma informação
                     if (tt.TagFields.ItemCount > 0)
                     {
-                        //para cada tag, busca o TagField, que é o ID
+                        //para cada tag, busca todos os componentes de tagfield (ANT)
                         foreach (TagField tf in tt.TagFields.FieldArray)
                         {
-                            MyTagList[tagCount] += " " + tf.ToString();
+                            ANT = tf.ToString();
                         }
                     }
+
                     //imprime as tags na caixa de mensagem
-                    PostMessageToListBox1(MyTagList[tagCount]);
+                    PostMessageToListBox1("ID: " + ID + ", ANT: " + ANT);
 
-                    if (radioButton1.Checked)
+                    string str = VerificaTag(ID, ANT);
+                    if(str == "NOTAG")
                     {
-                        //faz a inserção no banco
-                        //para isso, é preciso corresponder o id com o produto
-                        tag = MyTagList[tagCount].Substring(MyTagList[tagCount].Length - 3);
-                        int sc = int.Parse(tag);
-
-                        switch (sc)
-                        {
-                            case 081:
-                                string tag = "select * from insert_tag('" + MyTagList[tagCount] + "','luva')";
-                                RMQ_Send(tag, "tags");
-                                string log = "select * from insert_tag('" + MyTagList[tagCount] + "','luva'," + DateTime.Now + ")";
-                                RMQ_Send(log, "logs");
-                                //mudar o logs para logs_insert
-                                //logs é para receber e enviar o log
-                                break;
-
-                            case 082:
-                                tag = "select * from insert_tag('" + MyTagList[tagCount] + "','parafuso')";
-                                RMQ_Send(tag, "tags");
-                                break;
-
-                            case 084:
-                                tag = "select * from insert_tag('" + MyTagList[tagCount] + "','chicote')";
-                                RMQ_Send(tag, "tags");
-                                break;
-                        }
+                        PostMessageToListBox1("Tag não reconhecida pelo sistema");
                     }
-                    else
-                    {
-                        string tag = "select * from delete_tag('" + MyTagList[tagCount] + "')";
-                        RMQ_Send(tag, "tags");
-                    }
+                    //Enviar str para queue Tags para ser adicionada
+                    //Enviar str_log para queue Logs para ser adicionada
+                    //Atualizar dataGridView1
                 }
             }
             //caso não tenha/seja possível identificar nenhuma tag, imprime "NO TAGS"
@@ -285,10 +256,10 @@ namespace RFID
                 PostMessageToListBox1("NO TAGS");
             }
         }
-        
+
         //leitura contínua das tags definido por um determinado período de tempo em ms
         //ao final da leitura, imprime todas as tags na caixa de mensagem
-        private void ReadTagsReportNo()
+        private void LeituraContinua()
         {
             bool status = false;
 
@@ -306,7 +277,7 @@ namespace RFID
             timer1.Interval = 10000;
 
             //StartReadingTags recebe que a leitura será feita por poll
-            status = brdr.StartReadingTags(null, null, BRIReader.TagReportOptions.POLL);
+            status = brdr.StartReadingTags(null, "ANT", BRIReader.TagReportOptions.POLL);
 
             //inicializa o timer
             timer1.Enabled = true;
@@ -320,15 +291,15 @@ namespace RFID
             //verificação se o receptor está online
             //não é necessário imprimir nada pois esse aviso só é necessário quando as função são ativadas
             if (bReaderOffline == true)
-            { 
-                return; 
+            {
+                return;
             }
 
             timer1.Enabled = false;
 
             status = brdr.PollTags();
 
-            LoadTagList();
+            ListaTags();
 
             //após o período determinado, a leitura é interrompida
             brdr.StopReadingTags();
@@ -349,7 +320,7 @@ namespace RFID
             bool status = true;
             button1.Enabled = false;
 
-            status = OpenReaderConnection();
+            status = AbrirConexao();
 
             if (status == false)
             {
@@ -359,16 +330,10 @@ namespace RFID
             }
             else
             {
-                //Precisa ser feito para a leitura contínua
-                //(AddRFIDEventHandlers, EventHandlerTag,
-                //ReadTagsReportEvent e timer1_Tick 
-                //AddRFIDEventHandlers();
-
                 PostMessageToListBox1("IF2 conectado!");
 
-                //enable READ button
+                //habilitar botão de leitura
                 button2.Enabled = true;
-                button3.Enabled = true;
             }
         }
         private void Button2_Click(object sender, EventArgs e)
@@ -380,18 +345,7 @@ namespace RFID
                 return;
             }
 
-            ReadTagsReportNo();
-        }
-        private void button3_Click(object sender, EventArgs e)
-        {
-            //botão para ler o RFID
-            if (bReaderOffline == true)
-            {
-                PostMessageToListBox1("Receptor está offline");
-                return;
-            }
-
-            ReadTags();
+            LeituraContinua();
         }
 
         /*SQL
