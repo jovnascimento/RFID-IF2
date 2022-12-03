@@ -11,14 +11,15 @@ using System.Windows.Forms;
 
 namespace RFID
 {
-    public partial class Window : Form
+    public partial class F_Window : Form
     {
-        public Window(string message, string name)
+        public F_Window(string message, string name)
         {
             this.Name = name;
             InitializeComponent();
 
             dataGridView1.DataSource = JsonConvert.DeserializeObject<DataTable>(message);
+            label2.Text = dataGridView1.RowCount.ToString();
         }
     }
 }

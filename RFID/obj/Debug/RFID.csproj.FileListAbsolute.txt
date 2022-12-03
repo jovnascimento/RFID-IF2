@@ -57,4 +57,4 @@ C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\RabbitMQ.Client.xml
 C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\Newtonsoft.Json.dll
 C:\Users\jovna\Desktop\RFID-IF2\RFID\bin\Debug\Newtonsoft.Json.xml
 C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.csproj.SuggestedBindingRedirects.cache
-C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.Window.resources
+C:\Users\jovna\Desktop\RFID-IF2\RFID\obj\Debug\RFID.F_Window.resources

@@ -23,7 +23,6 @@ namespace RFID
         //Inicialização de variáveis para o RFID
         public BRIReader brdr = null;
         private bool bReaderOffline = true;
-        private int tagCount = 0;
         private string[] MyTagList = new string[100];
 
         //Inicializa o Form
@@ -112,7 +111,7 @@ namespace RFID
 
                 //Envia a resposta como parâmetro para a chamada de um novo Form
                 //Esse Form mostra a resposta em um dataGrid
-                Window janela = new Window(messageReceive, queue);
+                F_Window janela = new F_Window(messageReceive, queue);
                 janela.ShowDialog();
             };
 
@@ -150,7 +149,7 @@ namespace RFID
             string connect = null;
 
             //Verifica qual a forma de conexão selecionada
-            if (radioButton3.Checked == true)
+            if (radioButton1.Checked == true)
             {
                 //Conexão serial
                 connect = textBox3.Text;
@@ -263,6 +262,51 @@ namespace RFID
             status = brdr.StartReadingTags(null, "ANT", BRIReader.TagReportOptions.EVENT);
         }
 
+        //Código para escrever um valor no campo de ID
+        //Normalmente, essa ação não seria realizada no mesmo terminal que realiza a leitura
+        //Mas esse método será incluído para apresentar as possibilidades do leitor
+        private void EscreveTag()
+        {
+            string wResp = null;
+
+            //Verifica se a conexão foi feita com sucesso
+            if (bReaderOffline == true)
+            {
+                PostarMensagem("Não foi possível conectar ao leitor!");
+                return;
+            }
+
+
+            wResp = this.brdr.Execute($"W EPCID={textBox2.Text}");
+
+            int x = 0;
+            string delimStr = null;
+            string[] tList = null;
+            char[] delimiter = null;
+            int RspCount = 0;
+
+            delimStr = "\n";
+            delimiter = delimStr.ToCharArray();
+            tList = wResp.Replace("\r\n", "\n").Split(delimiter);
+            RspCount = tList.Length;
+            for (x = 0; x < RspCount; x++)
+            {
+                PostarMensagem(tList[x]);
+            }
+
+            //you need to check the response to determine if the write was successful
+            if (wResp.IndexOf("WROK") > 0)
+            {
+                PostarMensagem("Tag escrita com sucesso!");
+                PostarMensagem($"Tag: {textBox2.Text}");
+            }
+            else
+            {
+                PostarMensagem("Erro ao escrever na Tag!");
+                PostarMensagem($"Tag: {textBox2.Text}");
+            }
+        }
+
 
         //#### Tratamento ####
         //Faz a verificação da Tag e qual é sua correspondência no sistema
@@ -334,7 +378,7 @@ namespace RFID
         //#### Botões ####
         
         //Botão de conexão com o IF2
-        private void Button1_Click(object sender, EventArgs e)
+        private void button1_Click(object sender, EventArgs e)
         {
             bool status = true;
             button1.Enabled = false;
@@ -361,7 +405,7 @@ namespace RFID
         }
 
         //Botão para iniciar a leitura
-        private void Button2_Click(object sender, EventArgs e)
+        private void button2_Click(object sender, EventArgs e)
         {
             if (bReaderOffline == true)
             {
@@ -374,7 +418,7 @@ namespace RFID
 
             //Desabilita esse botão e habilita o botão de parar leitura
             button2.Enabled = false;
-            button5.Enabled = true;
+            button3.Enabled = true;
         }
 
         //Botão para finalizar leitura
@@ -385,7 +429,7 @@ namespace RFID
 
             //Desabilita esse botão e habilita o botão de leitura
             button2.Enabled = true;
-            button5.Enabled = false;
+            button3.Enabled = false;
         }
 
         //Botão para buscar as Tags com o PN (Part Number) informado
@@ -395,11 +439,15 @@ namespace RFID
             RMQ_RequestReply(sql, "Rtag");
         }
 
-        //Botão para buscar todo o Log
         private void button5_Click(object sender, EventArgs e)
         {
             string sql = "SELECT * FROM log()";
             RMQ_RequestReply(sql, "Rlog");
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            EscreveTag();
         }
     }
 }
