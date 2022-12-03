@@ -15,6 +15,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static Npgsql.Replication.PgOutput.Messages.RelationMessage;
+using System.IO;
 
 namespace RFID
 {
@@ -190,15 +191,16 @@ namespace RFID
             if (msg != null)
             {
                 //Se a mensagem recebida for a padrão
-                if (msg.Equals("OK>"))
+                if (msg.Equals("OK>") || msg.Equals("PING\r\nOK>"))
                 {
-                    //Define que o receptor está online
+                    PostarMensagem("Leitor online");
+                    //Define que o leitor está online
                     bReaderOffline = false;
                     status = true;
                 }
             }
 
-            //Se o status for falso após todo o processo, não foi possível conectar ao receptor
+            //Se o status for falso após todo o processo, não foi possível conectar ao leitor
             if (status == false)
             {
                 //Publica na caixa de mensagem que não foi possível conectar
@@ -409,7 +411,7 @@ namespace RFID
         {
             if (bReaderOffline == true)
             {
-                PostarMensagem("Receptor está offline");
+                PostarMensagem("Leitor está offline");
                 return;
             }
 
@@ -436,13 +438,13 @@ namespace RFID
         private void button4_Click(object sender, EventArgs e)
         {
             string sql = $"SELECT * FROM find_tags('{textBox1.Text}')";
-            RMQ_RequestReply(sql, "Rtag");
+            RMQ_RequestReply(sql, "RRtag");
         }
 
         private void button5_Click(object sender, EventArgs e)
         {
             string sql = "SELECT * FROM log()";
-            RMQ_RequestReply(sql, "Rlog");
+            RMQ_RequestReply(sql, "RRlog");
         }
 
         private void button6_Click(object sender, EventArgs e)
