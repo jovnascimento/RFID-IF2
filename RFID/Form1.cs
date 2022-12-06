@@ -193,7 +193,6 @@ namespace RFID
                 //Se a mensagem recebida for a padrão
                 if (msg.Equals("OK>") || msg.Equals("PING\r\nOK>"))
                 {
-                    PostarMensagem("Leitor online");
                     //Define que o leitor está online
                     bReaderOffline = false;
                     status = true;
@@ -248,7 +247,7 @@ namespace RFID
         //Leitura das Tags e tratamento delas como Eventos
         private void LerTagComoEvento()
         {
-            //A leitura dessas Tags é contínua
+            //A leitura das Tags é contínua
             //Cada Tag só pode ser identificada uma vez a cada vez que a leitura é aberta
             bool status = false;
 
@@ -278,39 +277,23 @@ namespace RFID
                 return;
             }
 
-
             wResp = this.brdr.Execute($"W EPCID={textBox2.Text}");
-
-            int x = 0;
-            string delimStr = null;
-            string[] tList = null;
-            char[] delimiter = null;
-            int RspCount = 0;
-
-            delimStr = "\n";
-            delimiter = delimStr.ToCharArray();
-            tList = wResp.Replace("\r\n", "\n").Split(delimiter);
-            RspCount = tList.Length;
-            for (x = 0; x < RspCount; x++)
-            {
-                PostarMensagem(tList[x]);
-            }
 
             //you need to check the response to determine if the write was successful
             if (wResp.IndexOf("WROK") > 0)
             {
                 PostarMensagem("Tag escrita com sucesso!");
-                PostarMensagem($"Tag: {textBox2.Text}");
+                PostarMensagem($"ID: {textBox2.Text}");
             }
             else
             {
                 PostarMensagem("Erro ao escrever na Tag!");
-                PostarMensagem($"Tag: {textBox2.Text}");
             }
         }
 
 
         //#### Tratamento ####
+
         //Faz a verificação da Tag e qual é sua correspondência no sistema
         private static string[] VerificaTag(string rfid, string ant)
         {
@@ -324,29 +307,29 @@ namespace RFID
             //String é transformada em int para realizar o switch case
             int sc = int.Parse(id);
 
+            //Verifica em qual lugar foi identificado que a Tag passou
+            string lant = VerificaAnt(ant);
+
             //Switch case trata cada RFid da forma seguindo o contexto do problema ser uma empresa de automóveis
             switch (sc)
             {
                 //Para cada case, retorna a string SQL para inserir na tabela Tags e na tabela Logs
                 case 081:
-                    string lant = VerificaAnt(ant);
                     sql[0] = $"select * from insert_tag('{rfid}', '708', 'Chicote TE D Celta', '{lant}')";
                     sql[1] = $"select * from insert_log('{rfid}', '708', 'Chicote TE D Celta', '{lant}', '{DateTime.Now}')";
                     return sql;
 
                 case 082:
-                    lant = VerificaAnt(ant);
                     sql[0] = $"select * from insert_tag('{rfid}', '957', 'Parafuso Fixação Motor', '{lant}')";
                     sql[1] = $"select * from insert_log('{rfid}', '957', 'Parafuso Fixação Motor', '{lant}', '{DateTime.Now}')";
                     return sql;
 
                 case 084:
-                    lant = VerificaAnt(ant);
                     sql[0] = $"select * from insert_tag('{rfid}', '339', 'Vidro Janela Celta', '{lant}')";
                     sql[1] = $"select * from insert_log('{rfid}', '339', 'Vidro Janela Celta', '{lant}', '{DateTime.Now}')";
                     return sql;
                 
-                //Caso a Tag não for identificada no sistema (interferência), é dado uma mensagem padrão
+                //Caso a Tag não for identificada no sistema (interferência ou falha), é dado uma mensagem padrão
                 default:
                     sql[0] = sql[1] = "NOTAG";
                     return sql;
@@ -360,10 +343,10 @@ namespace RFID
 
             switch (nant)
             {
-                case 1: return "Pavilhão 1";
-                case 2: return "Pavilhão 2";
-                case 3: return "Pavilhão 3";
-                case 4: return "Pavilhão 4";
+                case 1: return "Recebimento";
+                case 2: return "Inspeção de qualidade";
+                case 3: return "Produção";
+                case 4: return "Entrega";
                 default: return "Não identificado";
             }
         }
@@ -401,8 +384,9 @@ namespace RFID
                 //Adiciona o Handler de Evento na leitura da Tag
                 brdr.EventHandlerTag += new Tag_EventHandlerAdv(brdr_EventHandlerTag);
 
-                //Habilitar botão de leitura
+                //Habilitar botão de leitura e escrita
                 button2.Enabled = true;
+                button6.Enabled = true;
             }
         }
 
@@ -449,7 +433,23 @@ namespace RFID
 
         private void button6_Click(object sender, EventArgs e)
         {
+            //Verifica se o leitor está online
+            if (bReaderOffline == true)
+            {
+                PostarMensagem("Leitor está offline");
+                return;
+            }
+
+            //Escreve na Tag que for lida pela antena
+            //A operação de escrita é feita uma vez por click do botão
+            //Para todas as Tags que forem lidas
             EscreveTag();
+        }
+
+        private void button7_Click(object sender, EventArgs e)
+        {
+            string sql = $"SELECT * FROM find_log('{textBox2.Text}')";
+            RMQ_RequestReply(sql, "RRlog");
         }
     }
 }
